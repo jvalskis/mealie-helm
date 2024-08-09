@@ -3,6 +3,30 @@ entries:
   mealie:
   - apiVersion: v2
     appVersion: v1.10.2
+    created: "2024-08-09T13:24:25.271671605Z"
+    dependencies:
+    - name: common
+      repository: https://bjw-s.github.io/helm-charts/
+      version: 3.3.1
+    - condition: postgresql.enabled
+      name: postgresql
+      repository: https://charts.bitnami.com/bitnami
+      version: 15.5.21
+    description: Mealie is a self hosted recipe manager and meal planner with a RestAPI
+      backend and a reactive frontend application built in Vue for a pleasant user
+      experience for the whole family.
+    digest: 83d48ff61fead797701cf780dcb5660c83a7b7bea204c8e95db982d2f2a44339
+    keywords:
+    - mealie
+    kubeVersion: '>=1.16.0-0'
+    name: mealie
+    sources:
+    - https://github.com/mealie-recipes/mealie
+    urls:
+    - https://github.com/jvalskis/mealie-helm/releases/download/mealie-chart-2.0.0/mealie-2.0.0.tgz
+    version: 2.0.0
+  - apiVersion: v2
+    appVersion: v1.10.2
     created: "2024-07-19T17:23:35.503311359Z"
     dependencies:
     - name: common
@@ -49,4 +73,4 @@ entries:
     urls:
     - https://github.com/jvalskis/mealie-helm/releases/download/mealie-chart-1.0.0/mealie-1.0.0.tgz
     version: 1.0.0
-generated: "2024-07-19T17:23:35.503323822Z"
+generated: "2024-08-09T13:24:25.271687094Z"

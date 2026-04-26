@@ -4,6 +4,7 @@
 # This chart inherits from the bjw-s library chart. You can check the default values/options here:
 # https://github.com/bjw-s-labs/helm-charts/tree/main/charts/library/common
 #
+global: {}
 strategy:
   type: Recreate
 
@@ -24,8 +25,8 @@ controllers:
         # @default -- See below
         env:
           TZ: UTC
-          DB_ENGINE: '{{ if or .Values.cluster.enabled .Values.postgresql.enabled }}postgres{{ else }}sqlite{{ end }}'
-          POSTGRES_SERVER: '{{ if .Values.cluster.enabled }}{{ printf "%s-cluster-rw" .Release.Name }}{{ else if .Values.postgresql.enabled }}{{ printf "%s-postgresql" .Release.Name }}{{ end }}'
+          DB_ENGINE: '{{ include "mealie.dbEngine" . }}'
+          POSTGRES_SERVER: '{{ include "mealie.postgresServer" . }}'
           POSTGRES_PORT: "5432"
           POSTGRES_DB: mealie
           POSTGRES_USER:
@@ -70,29 +71,21 @@ persistence:
             readOnly: false
 
 # https://github.com/bitnami/charts/tree/master/bitnami/postgresql/#installing-the-chart
+# When enabled, DB_ENGINE and POSTGRES_SERVER are set automatically.
 postgresql:
   enabled: false
-#  auth:
-#    postgresPassword: ""
-#    username: ""
-#    password: ""
-#    database: ""
+  auth:
+    username: ""
+    password: ""
+    database: mealie
+    existingSecret: ""
   persistence:
     enabled: true
     storageClass:
     accessModes:
       - ReadWriteOnce
 
-# Credentials for the database.
-# If both username and password are set, a Kubernetes Secret is created automatically.
-# The generated secret name follows the pattern: <fullname>-db-credentials.
-# Designed for use with SOPS or Vault encrypted values files.
-credentials:
-  username: ""
-  password: ""
-
 # https://github.com/cloudnative-pg/charts/tree/main/charts/cluster
-# Requires the CloudNativePG operator to be installed in the cluster.
 # When enabled, DB_ENGINE and POSTGRES_SERVER are set automatically.
 cluster:
   enabled: false
@@ -110,5 +103,3 @@ cluster:
     initdb:
       database: mealie
       owner: mealie
-      # secret:
-      #   name: ""  # set to <fullname>-db-credentials when using the credentials section above

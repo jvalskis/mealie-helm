@@ -29,8 +29,8 @@ Full reference: https://github.com/bitnami/charts/tree/master/bitnami/postgresql
 | Property | Required | Notes |
 |---|---|---|
 | `postgresql.enabled` | yes | Set to `true` |
-| `postgresql.auth.username` | yes | Bitnami reads username from values, not from the secret |
-| `postgresql.auth.password` | no | Required when not using `existingSecret`; a secret is created automatically |
+| `postgresql.auth.username` | yes |  |
+| `postgresql.auth.password` | no | Required when not using `existingSecret` |
 | `postgresql.auth.existingSecret` | no | Use a pre-existing secret instead; must contain `password` and `postgres-password` keys |
 
 #### Option B - CloudNativePG cluster

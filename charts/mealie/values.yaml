@@ -90,7 +90,7 @@ postgresql:
 # https://github.com/cloudnative-pg/charts/tree/main/charts/cluster
 # When enabled, DB_ENGINE and POSTGRES_SERVER are set automatically.
 cluster:
-  enabled: true
+  enabled: false
   type: postgresql
   mode: standalone
   version:

@@ -43,3 +43,12 @@ Full reference: https://github.com/cloudnative-pg/charts/tree/main/charts/cluste
 |---|---|---|
 | `cluster.enabled` | yes | Set to `true` |
 | `cluster.cluster.initdb.secret.name` | no | Pre-existing secret for cluster bootstrap; must contain `username` and `password` keys. The operator creates one automatically if omitted |
+
+## Upgrade instructions
+
+### From 2.0.0 to 3.0.0
+
+Due to [changes in the common chart](https://bjw-s-labs.github.io/helm-charts/docs/app-template/upgrade-instructions/#from-3xx-to-40x) the deployment needs to be re-created before upgrading the chart:
+```
+kubectl delete deployment mealie
+```

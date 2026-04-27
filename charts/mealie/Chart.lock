@@ -1,9 +1,12 @@
 dependencies:
 - name: common
-  repository: https://bjw-s.github.io/helm-charts/
-  version: 3.3.1
+  repository: https://bjw-s-labs.github.io/helm-charts/
+  version: 4.6.2
 - name: postgresql
   repository: https://charts.bitnami.com/bitnami
   version: 15.5.21
-digest: sha256:86f3878e69572857cd951f9c1b85ef7627006b1edafbf89e2bc6fcf95fa310db
-generated: "2024-08-09T16:10:21.40668857+03:00"
+- name: cluster
+  repository: https://cloudnative-pg.github.io/charts
+  version: 0.6.0
+digest: sha256:6b783fc33161e465071e9dee2667b98b55dc03f3c485f7b42770cf53e37e675f
+generated: "2026-04-26T16:34:57.185281438+03:00"

@@ -4,6 +4,7 @@
 # This chart inherits from the bjw-s library chart. You can check the default values/options here:
 # https://github.com/bjw-s-labs/helm-charts/tree/main/charts/library/common
 #
+global: {}
 strategy:
   type: Recreate
 
@@ -24,6 +25,22 @@ controllers:
         # @default -- See below
         env:
           TZ: UTC
+          DB_ENGINE: '{{ include "mealie.dbEngine" . }}'
+          POSTGRES_SERVER: '{{ include "mealie.postgresServer" . }}'
+          POSTGRES_PORT: "5432"
+          POSTGRES_DB: mealie
+          POSTGRES_USER:
+            valueFrom:
+              secretKeyRef:
+                name: '{{ include "mealie.dbCredentialsSecretName" . }}'
+                key: username
+                optional: true
+          POSTGRES_PASSWORD:
+            valueFrom:
+              secretKeyRef:
+                name: '{{ include "mealie.dbCredentialsSecretName" . }}'
+                key: password
+                optional: true
 
 # -- Configures service settings for the chart. Normally this does not need to be modified.
 # @default -- See values.yaml
@@ -31,7 +48,7 @@ service:
   main:
     controller: main
     ports:
-      http: 
+      http:
         port: 9000
 
 ingress:
@@ -54,15 +71,37 @@ persistence:
             readOnly: false
 
 # https://github.com/bitnami/charts/tree/master/bitnami/postgresql/#installing-the-chart
+# When enabled, DB_ENGINE and POSTGRES_SERVER are set automatically.
 postgresql:
   enabled: false
-#  auth:
-#    postgresPassword: ""
-#    username: ""
-#    password: ""
-#    database: ""
+  image:
+    repository: bitnamilegacy/postgresql
+  auth:
+    username: ""
+    password: ""
+    database: mealie
+    existingSecret: ""
   persistence:
     enabled: true
     storageClass:
     accessModes:
       - ReadWriteOnce
+
+# https://github.com/cloudnative-pg/charts/tree/main/charts/cluster
+# When enabled, DB_ENGINE and POSTGRES_SERVER are set automatically.
+cluster:
+  enabled: true
+  type: postgresql
+  mode: standalone
+  version:
+    postgresql: "16"
+  cluster:
+    instances: 1
+    storage:
+      size: 10Gi
+    walStorage:
+      enabled: true
+      size: 2Gi
+    initdb:
+      database: mealie
+      owner: mealie

@@ -74,6 +74,8 @@ persistence:
 # When enabled, DB_ENGINE and POSTGRES_SERVER are set automatically.
 postgresql:
   enabled: false
+  image:
+    repository: bitnamilegacy/postgresql
   auth:
     username: ""
     password: ""
@@ -88,7 +90,7 @@ postgresql:
 # https://github.com/cloudnative-pg/charts/tree/main/charts/cluster
 # When enabled, DB_ENGINE and POSTGRES_SERVER are set automatically.
 cluster:
-  enabled: false
+  enabled: true
   type: postgresql
   mode: standalone
   version:

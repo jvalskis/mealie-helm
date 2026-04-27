@@ -1,6 +1,6 @@
 {{- define "mealie.dbCredentialsSecretName" -}}
 {{- if .Values.cluster.enabled -}}
-{{- if .Values.cluster.cluster.initdb.secret.name -}}
+{{- if and .Values.cluster.cluster.initdb.secret .Values.cluster.cluster.initdb.secret.name -}}
 {{- .Values.cluster.cluster.initdb.secret.name -}}
 {{- else -}}
 {{- printf "%s-cluster-app" .Release.Name -}}

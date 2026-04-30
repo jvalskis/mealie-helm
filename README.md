@@ -9,9 +9,7 @@ https://github.com/mealie-recipes/mealie
 ## Installing the chart
 
 ```console
-helm repo add mealie https://jvalskis.github.io/mealie-helm/
-helm repo update
-helm install mealie mealie/mealie
+helm install mealie oci://ghcr.io/jvalskis/mealie-helm/mealie
 ```
 
 ## Configuration

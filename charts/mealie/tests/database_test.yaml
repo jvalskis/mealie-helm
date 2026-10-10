@@ -1,0 +1,232 @@
+suite: database configuration
+release:
+  name: mealie-test
+  namespace: default
+tests:
+  - it: uses SQLite by default
+    template: templates/common.yaml
+    documentSelector:
+      path: kind
+      value: Deployment
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: DB_ENGINE
+            value: sqlite
+          any: true
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: POSTGRES_SERVER
+            value: ""
+          any: true
+
+  - it: configures bundled PostgreSQL and creates matching credentials
+    template: templates/common.yaml
+    documentSelector:
+      path: kind
+      value: Deployment
+    set:
+      postgresql.enabled: true
+      postgresql.auth.username: mealie
+      postgresql.auth.password: test-password
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: DB_ENGINE
+            value: postgres
+          any: true
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: POSTGRES_SERVER
+            value: mealie-test-postgresql
+          any: true
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: POSTGRES_USER
+            valueFrom:
+              secretKeyRef:
+                name: mealie-test-db-credentials
+                key: username
+                optional: true
+          any: true
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: POSTGRES_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: mealie-test-db-credentials
+                key: password
+                optional: true
+          any: true
+
+  - it: creates the bundled PostgreSQL credentials with the configured values
+    template: templates/secret.yaml
+    set:
+      postgresql.enabled: true
+      postgresql.auth.username: mealie
+      postgresql.auth.password: test-password
+    documentSelector:
+      path: kind
+      value: Secret
+    asserts:
+      - equal:
+          path: metadata.name
+          value: mealie-test-db-credentials
+      - equal:
+          path: stringData.username
+          value: mealie
+      - equal:
+          path: stringData.password
+          value: test-password
+      - equal:
+          path: stringData.postgres-password
+          value: test-password
+
+  - it: uses the configured existing PostgreSQL secret
+    template: templates/common.yaml
+    documentSelector:
+      path: kind
+      value: Deployment
+    set:
+      postgresql.enabled: true
+      postgresql.auth.username: mealie
+      postgresql.auth.existingSecret: mealie-db-secret
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: POSTGRES_USER
+            valueFrom:
+              secretKeyRef:
+                name: mealie-db-secret
+                key: username
+                optional: true
+          any: true
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: POSTGRES_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: mealie-db-secret
+                key: password
+                optional: true
+          any: true
+
+  - it: configures an external PostgreSQL server through environment overrides
+    template: templates/common.yaml
+    documentSelector:
+      path: kind
+      value: Deployment
+    set:
+      controllers:
+        main:
+          containers:
+            main:
+              env:
+                DB_ENGINE: postgres
+                POSTGRES_SERVER: postgres.example.com
+                POSTGRES_PORT: "5433"
+                POSTGRES_DB: recipes
+                POSTGRES_USER:
+                  valueFrom:
+                    secretKeyRef:
+                      name: external-db-credentials
+                      key: username
+                POSTGRES_PASSWORD:
+                  valueFrom:
+                    secretKeyRef:
+                      name: external-db-credentials
+                      key: password
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: DB_ENGINE
+            value: postgres
+          any: true
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: POSTGRES_SERVER
+            value: postgres.example.com
+          any: true
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: POSTGRES_PORT
+            value: "5433"
+          any: true
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: POSTGRES_DB
+            value: recipes
+          any: true
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: POSTGRES_USER
+            valueFrom:
+              secretKeyRef:
+                name: external-db-credentials
+                key: username
+                optional: true
+          any: true
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: POSTGRES_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: external-db-credentials
+                key: password
+                optional: true
+          any: true
+
+  - it: configures CloudNativePG and uses its generated application secret
+    template: templates/common.yaml
+    documentSelector:
+      path: kind
+      value: Deployment
+    set:
+      cluster.enabled: true
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: DB_ENGINE
+            value: postgres
+          any: true
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: POSTGRES_SERVER
+            value: mealie-test-cluster-rw
+          any: true
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: POSTGRES_USER
+            valueFrom:
+              secretKeyRef:
+                name: mealie-test-cluster-app
+                key: username
+                optional: true
+          any: true
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: POSTGRES_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: mealie-test-cluster-app
+                key: password
+                optional: true
+          any: true

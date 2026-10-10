@@ -1,0 +1,37 @@
+name: Chart Tests
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  unittest:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v4.3.1
+        with:
+          version: v3.18.6
+
+      - name: Add chart repositories
+        run: |
+          helm repo add bitnami https://charts.bitnami.com/bitnami
+          helm repo add bjw-s-labs https://bjw-s-labs.github.io/helm-charts/
+          helm repo add cloudnative-pg https://cloudnative-pg.github.io/charts
+
+      - name: Build chart dependencies
+        run: helm dependency build charts/mealie
+
+      - name: Install helm-unittest
+        run: helm plugin install https://github.com/helm-unittest/helm-unittest.git --version 1.2.1
+
+      - name: Run chart behavior tests
+        run: helm unittest --strict charts/mealie

@@ -21,6 +21,13 @@ controllers:
           tag: "{{ .Chart.AppVersion }}"
           # -- image pull policy
           pullPolicy: IfNotPresent
+        probes:
+          liveness: &probe
+            enabled: true
+            type: HTTP
+            path: /api/app/about
+            port: 9000
+          readiness: *probe
         # -- environment variables.
         # @default -- See below
         env:

@@ -1,0 +1,100 @@
+name: Validate Chart
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    env:
+      KUBE_VERSION: "1.28.15"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v4.3.1
+        with:
+          version: v3.18.6
+
+      - name: Add chart repositories
+        run: |
+          helm repo add bitnami https://charts.bitnami.com/bitnami
+          helm repo add bjw-s-labs https://bjw-s-labs.github.io/helm-charts/
+          helm repo add cloudnative-pg https://cloudnative-pg.github.io/charts
+
+      - name: Build chart dependencies
+        run: helm dependency build charts/mealie
+
+      - name: Lint chart
+        run: helm lint --strict --with-subcharts charts/mealie
+
+      - name: Create Kubernetes cluster
+        uses: helm/kind-action@v1.15.0
+        with:
+          node_image: kindest/node:v${{ env.KUBE_VERSION }}
+          kubectl_version: v${{ env.KUBE_VERSION }}
+
+      - name: Install Mealie with default configuration
+        run: |
+          helm upgrade --install mealie-default charts/mealie \
+            --namespace mealie-default \
+            --create-namespace \
+            --wait \
+            --timeout 10m
+
+      - name: Remove default configuration release
+        run: |
+          helm uninstall mealie-default --namespace mealie-default
+          kubectl delete namespace mealie-default --wait=true --timeout=2m
+
+      - name: Install Mealie with bundled PostgreSQL
+        run: |
+          helm upgrade --install mealie-with-pg charts/mealie \
+            --namespace mealie-postgresql \
+            --create-namespace \
+            --set postgresql.enabled=true \
+            --set postgresql.auth.username=mealie \
+            --set postgresql.auth.password=ci-only \
+            --wait \
+            --timeout 10m
+
+      - name: Remove bundled PostgreSQL release
+        run: |
+          helm uninstall mealie-with-pg --namespace mealie-postgresql
+          kubectl delete namespace mealie-postgresql --wait=true --timeout=2m
+
+      - name: Install CloudNativePG operator
+        run: |
+          helm upgrade --install cnpg cloudnative-pg/cloudnative-pg \
+            --version 0.22.1 \
+            --namespace cnpg-system \
+            --create-namespace \
+            --wait \
+            --timeout 5m
+          kubectl wait --for=condition=Established --timeout=2m \
+            crd/clusters.postgresql.cnpg.io
+
+      - name: Install Mealie with CloudNativePG
+        run: |
+          helm upgrade --install mealie-cnpg charts/mealie \
+            --namespace mealie-cnpg \
+            --create-namespace \
+            --set cluster.enabled=true \
+            --wait \
+            --timeout 10m
+          kubectl wait --namespace mealie-cnpg --for=condition=Ready --timeout=5m \
+            clusters.postgresql.cnpg.io/mealie-cnpg-cluster
+
+      - name: Show Kubernetes diagnostics on failure
+        if: failure()
+        run: |
+          kubectl get pods -A -o wide || true
+          kubectl get clusters.postgresql.cnpg.io -A -o yaml || true
+          kubectl get events -A --sort-by=.lastTimestamp || true

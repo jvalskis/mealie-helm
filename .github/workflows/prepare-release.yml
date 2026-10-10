@@ -1,0 +1,94 @@
+name: Prepare Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Chart version to prepare (for example, 3.0.6)
+        required: true
+        type: string
+      app_version:
+        description: Optional Mealie app version without a v prefix (for example, 3.24.0)
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  prepare-release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Check release token
+        env:
+          RELEASE_TOKEN: ${{ secrets.RELEASE_TOKEN }}
+        run: |
+          if [ -z "$RELEASE_TOKEN" ]; then
+            echo "Set the repository secret RELEASE_TOKEN to a token with contents:write and pull-requests:write permissions." >&2
+            exit 1
+          fi
+
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.RELEASE_TOKEN }}
+
+      - name: Validate versions
+        env:
+          CHART_VERSION: ${{ inputs.version }}
+          APP_VERSION: ${{ inputs.app_version }}
+        run: |
+          semver='^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?(\+[0-9A-Za-z.-]+)?$'
+          if [[ ! "$CHART_VERSION" =~ $semver ]]; then
+            echo "Invalid chart version: $CHART_VERSION" >&2
+            exit 1
+          fi
+          if [ -n "$APP_VERSION" ]; then
+            if [[ ! "$APP_VERSION" =~ $semver ]]; then
+              echo "Invalid app version: $APP_VERSION" >&2
+              exit 1
+            fi
+          fi
+
+      - name: Update chart metadata
+        uses: mikefarah/yq@v4.52.1
+        env:
+          CHART_VERSION: ${{ inputs.version }}
+          APP_VERSION: ${{ inputs.app_version }}
+        with:
+          cmd: >-
+            yq -i 'if strenv(APP_VERSION) != "" then .appVersion = strenv(APP_VERSION) else . end |
+            .version = strenv(CHART_VERSION)' charts/mealie/Chart.yaml
+
+      - name: Check for chart changes
+        run: |
+          if git diff --quiet -- charts/mealie/Chart.yaml; then
+            echo "The requested versions do not change Chart.yaml." >&2
+            exit 1
+          fi
+
+      - name: Create or update release pull request
+        env:
+          GH_TOKEN: ${{ secrets.RELEASE_TOKEN }}
+          CHART_VERSION: ${{ inputs.version }}
+        run: |
+          branch="prepare-release/v$CHART_VERSION"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git switch -c "$branch"
+          git add charts/mealie/Chart.yaml
+          git commit -m "chore(release): prepare v$CHART_VERSION"
+          git push --force origin "$branch"
+
+          if gh pr view "$branch" >/dev/null 2>&1; then
+            echo "Updated existing release preparation PR for v$CHART_VERSION"
+          else
+            gh pr create \
+              --base "$GITHUB_REF_NAME" \
+              --head "$branch" \
+              --title "chore(release): prepare v$CHART_VERSION" \
+              --body "Updates the Mealie Helm chart metadata for release v$CHART_VERSION. Merge this PR before publishing the GitHub Release."
+          fi

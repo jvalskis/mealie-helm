@@ -21,6 +21,12 @@ jobs:
         with:
           version: v3.18.6
 
+      - name: Add chart repositories
+        run: |
+          helm repo add bitnami https://charts.bitnami.com/bitnami
+          helm repo add bjw-s-labs https://bjw-s-labs.github.io/helm-charts/
+          helm repo add cloudnative-pg https://cloudnative-pg.github.io/charts
+
       - name: Build chart dependencies
         run: helm dependency build charts/mealie
 

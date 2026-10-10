@@ -89,7 +89,7 @@ jobs:
             --set cluster.enabled=true \
             --wait \
             --timeout 10m
-          kubectl wait --for=condition=Ready --timeout=5m \
+          kubectl wait --namespace mealie-cnpg --for=condition=Ready --timeout=5m \
             clusters.postgresql.cnpg.io/mealie-cnpg-cluster
 
       - name: Show Kubernetes diagnostics on failure

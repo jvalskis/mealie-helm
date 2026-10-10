@@ -56,7 +56,7 @@ jobs:
 
       - name: Install Mealie with bundled PostgreSQL
         run: |
-          helm upgrade --install mealie-postgresql charts/mealie \
+          helm upgrade --install mealie-with-pg charts/mealie \
             --namespace mealie-postgresql \
             --create-namespace \
             --set postgresql.enabled=true \
@@ -67,7 +67,7 @@ jobs:
 
       - name: Remove bundled PostgreSQL release
         run: |
-          helm uninstall mealie-postgresql --namespace mealie-postgresql
+          helm uninstall mealie-with-pg --namespace mealie-postgresql
           kubectl delete namespace mealie-postgresql --wait=true --timeout=2m
 
       - name: Install CloudNativePG operator

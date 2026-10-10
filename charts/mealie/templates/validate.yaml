@@ -1,0 +1,3 @@
+{{- if and .Values.postgresql.enabled .Values.cluster.enabled -}}
+{{- fail "postgresql.enabled and cluster.enabled cannot both be true; enable at most one bundled database (both may be false for SQLite or an external database)" -}}
+{{- end -}}

@@ -1,0 +1,52 @@
+name: Validate Chart
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v4.3.1
+        with:
+          version: v3.18.6
+
+      - name: Build chart dependencies
+        run: helm dependency build charts/mealie
+
+      - name: Lint chart
+        run: helm lint --strict --with-subcharts charts/mealie
+
+      - name: Render and validate default configuration
+        run: |
+          helm template mealie charts/mealie --kube-version 1.30.0 \
+            | docker run --rm -i --entrypoint /kubeconform ghcr.io/yannh/kubeconform:v0.8.0 \
+                -strict -summary -kubernetes-version 1.30.0 -
+
+      - name: Render and validate bundled PostgreSQL configuration
+        run: |
+          helm template mealie charts/mealie --kube-version 1.30.0 \
+            --set postgresql.enabled=true \
+            --set postgresql.auth.username=mealie \
+            --set postgresql.auth.password=ci-only \
+            | docker run --rm -i --entrypoint /kubeconform ghcr.io/yannh/kubeconform:v0.8.0 \
+                -strict -summary -kubernetes-version 1.30.0 -
+
+      - name: Render and validate CloudNativePG configuration
+        run: |
+          helm template mealie charts/mealie --kube-version 1.30.0 \
+            --set cluster.enabled=true \
+            | docker run --rm -i --entrypoint /kubeconform ghcr.io/yannh/kubeconform:v0.8.0 \
+                -strict -summary -kubernetes-version 1.30.0 \
+                -schema-location default \
+                -schema-location 'https://raw.githubusercontent.com/datreeio/CRDs-catalog/main/{{.Group}}/{{.ResourceKind}}_{{.ResourceAPIVersion}}.json' -

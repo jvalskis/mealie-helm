@@ -62,7 +62,7 @@ jobs:
           cmd: |
             yq -i '.version = strenv(CHART_VERSION)' charts/mealie/Chart.yaml
             if [ -n "$APP_VERSION" ]; then
-              yq -i '.appVersion = strenv(APP_VERSION)' charts/mealie/Chart.yaml
+              yq -i '.appVersion = "v" + strenv(APP_VERSION)' charts/mealie/Chart.yaml
             fi
 
       - name: Check for chart changes
@@ -76,8 +76,17 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.RELEASE_TOKEN }}
           CHART_VERSION: ${{ inputs.version }}
+          APP_VERSION: ${{ inputs.app_version }}
         run: |
-          branch="prepare-release/v$CHART_VERSION"
+          branch="prepare-release-v$CHART_VERSION"
+          title="chore(release): prepare v$CHART_VERSION"
+          body="Prepares Helm chart release v$CHART_VERSION."
+          if [ -n "$APP_VERSION" ]; then
+            title="$title; bumped Mealie to v$APP_VERSION"
+            body="$body Bumps Mealie to v$APP_VERSION."
+          fi
+          body="$body Merge this PR before publishing the GitHub Release."
+
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git switch -c "$branch"
@@ -86,11 +95,12 @@ jobs:
           git push --force origin "$branch"
 
           if gh pr view "$branch" >/dev/null 2>&1; then
+            gh pr edit "$branch" --title "$title" --body "$body"
             echo "Updated existing release preparation PR for v$CHART_VERSION"
           else
             gh pr create \
               --base "$GITHUB_REF_NAME" \
               --head "$branch" \
-              --title "chore(release): prepare v$CHART_VERSION" \
-              --body "Updates the Mealie Helm chart metadata for release v$CHART_VERSION. Merge this PR before publishing the GitHub Release."
+              --title "$title" \
+              --body "$body"
           fi

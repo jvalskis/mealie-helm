@@ -8,9 +8,30 @@ on:
 
 permissions:
   contents: read
+  pull-requests: read
 
 jobs:
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      charts: ${{ steps.filter.outputs.charts }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check changed paths
+        uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            charts:
+              - 'charts/**'
+
   validate:
+    needs: changes
+    if: needs.changes.outputs.charts == 'true'
     runs-on: ubuntu-latest
     env:
       KUBE_VERSION: "1.28.15"

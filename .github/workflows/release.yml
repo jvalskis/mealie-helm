@@ -2,25 +2,43 @@ name: Release Charts
 
 on:
   push:
-    tags: 
+    tags:
       - "v*"
+
+permissions:
+  contents: read
 
 jobs:
   release:
     permissions:
-      contents: read
+      contents: write
       packages: write
     runs-on: ubuntu-latest
+    concurrency:
+      group: release-charts
+      cancel-in-progress: false
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: Configure Git
+      - name: Verify release tag matches chart version
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
         run: |
-          git config user.name "${{ github.actor }}"
-          git config user.email "${{ github.actor }}@users.noreply.github.com"
+          chart_version=$(sed -n 's/^version: *//p' charts/mealie/Chart.yaml | head -n 1 | tr -d '"\r')
+          if [ "$RELEASE_TAG" != "v$chart_version" ]; then
+            echo "Release tag $RELEASE_TAG does not match chart version $chart_version" >&2
+            exit 1
+          fi
+
+      - name: Configure Git
+        env:
+          GITHUB_ACTOR: ${{ github.actor }}
+        run: |
+          git config user.name "$GITHUB_ACTOR"
+          git config user.email "$GITHUB_ACTOR@users.noreply.github.com"
 
       - name: Add dependency chart repos
         run: |

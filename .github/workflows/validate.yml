@@ -13,7 +13,7 @@ jobs:
   validate:
     runs-on: ubuntu-latest
     env:
-      KUBE_VERSION: "1.28.0"
+      KUBE_VERSION: "1.28.15"
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -35,26 +35,66 @@ jobs:
       - name: Lint chart
         run: helm lint --strict --with-subcharts charts/mealie
 
-      - name: Render and validate default configuration
-        run: |
-          helm template mealie charts/mealie --kube-version "$KUBE_VERSION" \
-            | docker run --rm -i --entrypoint /kubeconform ghcr.io/yannh/kubeconform:v0.8.0 \
-                -strict -summary -kubernetes-version "$KUBE_VERSION" -
+      - name: Create Kubernetes cluster
+        uses: helm/kind-action@v1.15.0
+        with:
+          node_image: kindest/node:v${{ env.KUBE_VERSION }}
+          kubectl_version: v${{ env.KUBE_VERSION }}
 
-      - name: Render and validate bundled PostgreSQL configuration
+      - name: Install Mealie with default configuration
         run: |
-          helm template mealie charts/mealie --kube-version "$KUBE_VERSION" \
+          helm upgrade --install mealie-default charts/mealie \
+            --namespace mealie-default \
+            --create-namespace \
+            --wait \
+            --timeout 10m
+
+      - name: Remove default configuration release
+        run: |
+          helm uninstall mealie-default --namespace mealie-default
+          kubectl delete namespace mealie-default --wait=true --timeout=2m
+
+      - name: Install Mealie with bundled PostgreSQL
+        run: |
+          helm upgrade --install mealie-postgresql charts/mealie \
+            --namespace mealie-postgresql \
+            --create-namespace \
             --set postgresql.enabled=true \
             --set postgresql.auth.username=mealie \
             --set postgresql.auth.password=ci-only \
-            | docker run --rm -i --entrypoint /kubeconform ghcr.io/yannh/kubeconform:v0.8.0 \
-                -strict -summary -kubernetes-version "$KUBE_VERSION" -
+            --wait \
+            --timeout 10m
 
-      - name: Render and validate CloudNativePG configuration
+      - name: Remove bundled PostgreSQL release
         run: |
-          helm template mealie charts/mealie --kube-version "$KUBE_VERSION" \
+          helm uninstall mealie-postgresql --namespace mealie-postgresql
+          kubectl delete namespace mealie-postgresql --wait=true --timeout=2m
+
+      - name: Install CloudNativePG operator
+        run: |
+          helm upgrade --install cnpg cloudnative-pg/cloudnative-pg \
+            --version 0.22.1 \
+            --namespace cnpg-system \
+            --create-namespace \
+            --wait \
+            --timeout 5m
+          kubectl wait --for=condition=Established --timeout=2m \
+            crd/clusters.postgresql.cnpg.io
+
+      - name: Install Mealie with CloudNativePG
+        run: |
+          helm upgrade --install mealie-cnpg charts/mealie \
+            --namespace mealie-cnpg \
+            --create-namespace \
             --set cluster.enabled=true \
-            | docker run --rm -i --entrypoint /kubeconform ghcr.io/yannh/kubeconform:v0.8.0 \
-                -strict -summary -kubernetes-version "$KUBE_VERSION" \
-                -schema-location default \
-                -schema-location 'https://raw.githubusercontent.com/datreeio/CRDs-catalog/main/{{.Group}}/{{.ResourceKind}}_{{.ResourceAPIVersion}}.json' -
+            --wait \
+            --timeout 10m
+          kubectl wait --for=condition=Ready --timeout=5m \
+            clusters.postgresql.cnpg.io/mealie-cnpg-cluster
+
+      - name: Show Kubernetes diagnostics on failure
+        if: failure()
+        run: |
+          kubectl get pods -A -o wide || true
+          kubectl get clusters.postgresql.cnpg.io -A -o yaml || true
+          kubectl get events -A --sort-by=.lastTimestamp || true

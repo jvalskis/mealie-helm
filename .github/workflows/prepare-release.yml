@@ -59,9 +59,11 @@ jobs:
           CHART_VERSION: ${{ inputs.version }}
           APP_VERSION: ${{ inputs.app_version }}
         with:
-          cmd: >-
-            yq -i 'if strenv(APP_VERSION) != "" then .appVersion = strenv(APP_VERSION) else . end |
-            .version = strenv(CHART_VERSION)' charts/mealie/Chart.yaml
+          cmd: |
+            yq -i '.version = strenv(CHART_VERSION)' charts/mealie/Chart.yaml
+            if [ -n "$APP_VERSION" ]; then
+              yq -i '.appVersion = strenv(APP_VERSION)' charts/mealie/Chart.yaml
+            fi
 
       - name: Check for chart changes
         run: |

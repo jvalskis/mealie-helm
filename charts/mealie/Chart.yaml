@@ -1,8 +1,8 @@
 apiVersion: v2
-appVersion: v3.23.1
+appVersion: 3.28.0
 description: Mealie is a self hosted recipe manager and meal planner with a RestAPI backend and a reactive frontend application built in Vue for a pleasant user experience for the whole family.
 name: mealie
-version: 3.0.5
+version: 3.1.0
 kubeVersion: ">=1.28.0-0"
 keywords:
   - mealie

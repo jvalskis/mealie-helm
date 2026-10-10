@@ -12,6 +12,8 @@ permissions:
 jobs:
   validate:
     runs-on: ubuntu-latest
+    env:
+      KUBE_VERSION: "1.28.0"
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -35,24 +37,24 @@ jobs:
 
       - name: Render and validate default configuration
         run: |
-          helm template mealie charts/mealie --kube-version 1.30.0 \
+          helm template mealie charts/mealie --kube-version "$KUBE_VERSION" \
             | docker run --rm -i --entrypoint /kubeconform ghcr.io/yannh/kubeconform:v0.8.0 \
-                -strict -summary -kubernetes-version 1.30.0 -
+                -strict -summary -kubernetes-version "$KUBE_VERSION" -
 
       - name: Render and validate bundled PostgreSQL configuration
         run: |
-          helm template mealie charts/mealie --kube-version 1.30.0 \
+          helm template mealie charts/mealie --kube-version "$KUBE_VERSION" \
             --set postgresql.enabled=true \
             --set postgresql.auth.username=mealie \
             --set postgresql.auth.password=ci-only \
             | docker run --rm -i --entrypoint /kubeconform ghcr.io/yannh/kubeconform:v0.8.0 \
-                -strict -summary -kubernetes-version 1.30.0 -
+                -strict -summary -kubernetes-version "$KUBE_VERSION" -
 
       - name: Render and validate CloudNativePG configuration
         run: |
-          helm template mealie charts/mealie --kube-version 1.30.0 \
+          helm template mealie charts/mealie --kube-version "$KUBE_VERSION" \
             --set cluster.enabled=true \
             | docker run --rm -i --entrypoint /kubeconform ghcr.io/yannh/kubeconform:v0.8.0 \
-                -strict -summary -kubernetes-version 1.30.0 \
+                -strict -summary -kubernetes-version "$KUBE_VERSION" \
                 -schema-location default \
                 -schema-location 'https://raw.githubusercontent.com/datreeio/CRDs-catalog/main/{{.Group}}/{{.ResourceKind}}_{{.ResourceAPIVersion}}.json' -
